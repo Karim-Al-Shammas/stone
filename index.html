@@ -72,12 +72,6 @@ h1.title { font-size:28px; font-weight:800; letter-spacing:-0.5px; margin:0; }
 .ex-muscle-tag { font-size:10px; font-weight:700; padding:4px 8px; background:rgba(110,231,183,0.15); color:var(--blue); border-radius:6px; text-transform:uppercase; letter-spacing:0.5px; }
 .ex-detail-badge { display:inline-block; font-size:12px; font-weight:700; padding:5px 12px; background:rgba(110,231,183,0.2); color:var(--blue); border-radius:8px; border:1px solid rgba(110,231,183,0.35); }
 .chart-box { background:var(--card); backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); border-radius:16px; padding:16px 8px 8px; border:1px solid var(--border); overflow-x:auto; }
-.timer-circle { display:flex; justify-content:center; margin:30px 0; }
-.timer-btns { display:flex; justify-content:center; gap:12px; margin-bottom:24px; }
-.timer-btn { display:flex; align-items:center; gap:8px; padding:14px 28px; border-radius:16px; border:none; color:#091520; font-size:16px; font-weight:600; cursor:pointer; }
-.timer-btn-outline { display:flex; align-items:center; gap:8px; padding:14px 28px; border-radius:16px; border:1px solid rgba(255,255,255,0.18); background:rgba(255,255,255,0.08); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); color:rgba(255,255,255,0.8); font-size:16px; font-weight:600; cursor:pointer; }
-.preset-btn { padding:10px 18px; border-radius:12px; border:1px solid rgba(255,255,255,0.16); background:rgba(255,255,255,0.08); font-size:14px; font-weight:600; cursor:pointer; color:rgba(255,255,255,0.8); }
-.preset-btn.active { background:rgba(110,231,183,0.22); color:var(--blue); border-color:rgba(110,231,183,0.4); }
 .icon-btn { background:none; border:none; cursor:pointer; color:rgba(255,255,255,0.28); padding:6px; }
 .header-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
 .elapsed { font-size:14px; color:var(--blue); font-weight:600; font-variant-numeric:tabular-nums; }
@@ -141,11 +135,9 @@ let state={
   exFilterMuscle:null,exSearchQ:'',selectedEx:null,
   // progress
   progressEx:'bench',
-  // timer
-  timerSeconds:90,timerRemaining:90,timerRunning:false,
 };
 
-let elapsedInterval=null,restInterval=null,timerInterval=null;
+let elapsedInterval=null,restInterval=null;
 
 function save(){localStorage.setItem('fg_workouts',JSON.stringify(state.workouts));}
 function calcPrs(){
@@ -179,7 +171,6 @@ const icons={
   dumbbell:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6.5 6.5h11M6 12h12M3 9v6M21 9v6M5 7v10M19 7v10M6.5 17.5h11"/></svg>`,
   chart:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
   book:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>`,
-  timer:`<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M10 2h4"/></svg>`,
   plus:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
   trash:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>`,
   check:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
@@ -210,7 +201,6 @@ function render(){
   else if(state.page==='workout'&&state.subPage==='active') html+=renderActiveWorkout();
   else if(state.page==='progress') html+=renderProgress();
   else if(state.page==='exercises') html+=renderExercises();
-  else if(state.page==='timer') html+=renderTimer();
   html+='</div>';
   html+=renderNav();
   if(state.showPicker) html+=renderPicker();
@@ -224,7 +214,6 @@ function renderNav(){
     {id:'workout',icon:icons.dumbbell,label:'Workouts'},
     {id:'progress',icon:icons.chart,label:'Progress'},
     {id:'exercises',icon:icons.book,label:'Exercises'},
-    {id:'timer',icon:icons.timer,label:'Timer'},
   ];
   return `<nav class="bottom">${tabs.map(t=>`<button class="${state.page===t.id?'active':''}" onclick="nav('${t.id}')">${t.icon}<span>${t.label}</span></button>`).join('')}</nav>`;
 }
@@ -379,42 +368,6 @@ function renderExercises(){
   `;
 }
 
-// ─── TIMER ───
-function renderTimer(){
-  const presets=[30,60,90,120,180,300];
-  const progress=state.timerSeconds>0?state.timerRemaining/state.timerSeconds:0;
-  const circ=2*Math.PI*90;
-  const offset=circ*(1-progress);
-  return `
-    <h1 class="title">Rest Timer</h1>
-    <div class="timer-circle"><div style="position:relative;width:220px;height:220px">
-      <svg width="220" height="220" viewBox="0 0 220 220"><circle cx="110" cy="110" r="90" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="8"/><circle cx="110" cy="110" r="90" fill="none" stroke="var(--blue)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${offset}" transform="rotate(-90 110 110)" style="transition:stroke-dashoffset 0.3s"/></svg>
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center"><div style="font-size:42px;font-weight:700;font-variant-numeric:tabular-nums">${fmtTime(state.timerRemaining)}</div><div style="font-size:12px;color:var(--sub)">remaining</div></div>
-    </div></div>
-    <div class="timer-btns">
-      <button class="timer-btn" style="background:${state.timerRunning?'var(--red)':'var(--blue)'}" onclick="toggleTimer()">${state.timerRunning?icons.pause:icons.play}<span>${state.timerRunning?'Pause':state.timerRemaining===0?'Restart':'Start'}</span></button>
-      <button class="timer-btn-outline" onclick="resetTimer()">${icons.reset} Reset</button>
-    </div>
-    <div class="section"><h3 style="font-size:13px;color:var(--sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Presets</h3><div style="display:flex;gap:8px;flex-wrap:wrap">${presets.map(p=>`<button class="preset-btn ${state.timerSeconds===p?'active':''}" onclick="setTimerPreset(${p})">${fmtTime(p)}</button>`).join('')}</div></div>
-    <div class="section"><h3 style="font-size:13px;color:var(--sub);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Custom</h3><div style="display:flex;align-items:center;gap:12px"><input type="range" min="10" max="600" step="5" value="${state.timerSeconds}" oninput="setTimerCustom(this.value)" style="flex:1;accent-color:var(--blue)"><span style="font-size:14px;font-weight:600;min-width:50px;text-align:right">${fmtTime(state.timerSeconds)}</span></div></div>
-  `;
-}
-
-function toggleTimer(){
-  if(!state.timerRunning&&state.timerRemaining===0)state.timerRemaining=state.timerSeconds;
-  state.timerRunning=!state.timerRunning;
-  clearInterval(timerInterval);
-  if(state.timerRunning){
-    timerInterval=setInterval(()=>{
-      if(state.timerRemaining<=1){state.timerRemaining=0;state.timerRunning=false;clearInterval(timerInterval);render();return;}
-      state.timerRemaining--;render();
-    },1000);
-  }
-  render();
-}
-function resetTimer(){state.timerRunning=false;clearInterval(timerInterval);state.timerRemaining=state.timerSeconds;render();}
-function setTimerPreset(p){state.timerSeconds=p;state.timerRemaining=p;state.timerRunning=false;clearInterval(timerInterval);render();}
-function setTimerCustom(v){state.timerSeconds=Number(v);if(!state.timerRunning)state.timerRemaining=Number(v);render();}
 
 function attachEvents(){}
 
