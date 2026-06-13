@@ -8,7 +8,7 @@ struct FitForgeApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(store)
-                .tint(Theme.blue)
+                .tint(Deco.brass)
         }
     }
 }

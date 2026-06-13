@@ -3,160 +3,173 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var store: AppStore
 
-    private var dateString: String {
-        let f = DateFormatter()
-        f.dateFormat = "EEEE, MMMM d"
-        return f.string(from: Date())
+    private var greeting: String {
+        switch Calendar.current.component(.hour, from: Date()) {
+        case 5..<12: return "Good morning,"
+        case 12..<17: return "Good afternoon,"
+        default: return "Good evening,"
+        }
     }
 
-    private var volumeString: String {
-        let v = store.weeklyVolume
-        return v > 999 ? String(format: "%.1fk", v / 1000) : String(Int(v))
+    private var headerSub: String {
+        let f = DateFormatter(); f.dateFormat = "MMMM"
+        let year = Calendar.current.component(.year, from: Date())
+        return "\(f.string(from: Date())) · \(roman(year))"
+    }
+
+    private var volume: String {
+        String(format: "%.1f", store.weeklyVolume / 1000)
     }
 
     private var recentPRs: [PersonalRecord] {
-        store.personalRecords.values
-            .sorted { ($0.date) > ($1.date) }
-            .prefix(3)
-            .map { $0 }
+        store.personalRecords.values.sorted { $0.date > $1.date }.prefix(3).map { $0 }
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("FitForge")
-                        .font(.system(size: 28, weight: .heavy))
-                    Text(dateString)
-                        .font(.subheadline)
-                        .foregroundStyle(Theme.sub)
-                }
-                .padding(.bottom, 20)
+        VStack(spacing: 0) {
+            DecoHeader(title: "FITFORGE", sub: headerSub)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(greeting).font(.bodyText(13)).tracking(0.5).foregroundStyle(Deco.inkSoft)
+                    Text("ATHLETE").font(.display(28)).tracking(2).foregroundStyle(Deco.ink)
+                        .padding(.top, 2)
 
-                HStack(spacing: 10) {
-                    StatCard(label: "This Week", value: "\(store.workoutsThisWeek.count)",
-                             unit: "workouts", accent: Theme.blue)
-                    StatCard(label: "Volume", value: volumeString, unit: "kg", accent: Theme.green)
-                    StatCard(label: "Streak", value: "\(store.streak)", unit: "days",
-                             accent: Theme.orange, icon: "flame.fill")
-                }
-                .padding(.bottom, 16)
+                    statsTrio.padding(.top, 22)
+                    beginButton.padding(.top, 22)
 
-                Button(action: store.startWorkout) {
-                    Label("Start Workout", systemImage: "plus")
-                        .font(.system(size: 16, weight: .bold))
-                        .frame(maxWidth: .infinity)
-                        .padding(16)
-                        .background(Theme.blue)
-                        .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .shadow(color: Theme.blue.opacity(0.35), radius: 14, x: 0, y: 4)
-                }
-                .padding(.bottom, 24)
+                    if !recentPRs.isEmpty {
+                        SectionTitle(title: "RECENT RECORDS", kicker: "Laureates")
+                        recordsCard.padding(.top, 10)
+                    }
 
-                if !recentPRs.isEmpty {
-                    SectionHeader(title: "Recent PRs", icon: "trophy")
-                    ForEach(recentPRs) { pr in
-                        PRRow(pr: pr)
+                    let recent = Array(store.workoutsByDateDesc.prefix(3))
+                    if !recent.isEmpty {
+                        SectionTitle(title: "RECENT SESSIONS", kicker: "Ledger")
+                        VStack(spacing: 6) {
+                            ForEach(recent) { SessionRow(workout: $0) }
+                        }
+                        .padding(.top, 10)
                     }
                 }
+                .padding(.horizontal, 24)
+                .padding(.top, 20)
+                .padding(.bottom, 120)
+            }
+        }
+        .background(Deco.cream)
+    }
 
-                let recent = Array(store.workoutsByDateDesc.prefix(3))
-                if !recent.isEmpty {
-                    Text("Recent Workouts")
-                        .font(.system(size: 17, weight: .bold))
-                        .padding(.top, 24)
-                        .padding(.bottom, 12)
-                    ForEach(recent) { w in
-                        WorkoutSummaryRow(workout: w)
+    private var statsTrio: some View {
+        HStack(spacing: 0) {
+            statCell("WEEK", "\(store.workoutsThisWeek.count)", "sessions", divider: true)
+            statCell("VOLUME", volume, "kt", divider: true)
+            statCell("STREAK", "\(store.streak)", "days", divider: false)
+        }
+        .background(Deco.paper)
+        .overlay(Rectangle().stroke(Deco.brass, lineWidth: 1))
+    }
+
+    private func statCell(_ label: String, _ value: String, _ unit: String, divider: Bool) -> some View {
+        VStack(spacing: 0) {
+            Rectangle().fill(Deco.brass).frame(width: 1, height: 6)
+            Kicker(text: label, size: 9).padding(.top, 8)
+            Text(value).font(.display(38)).tracking(1).foregroundStyle(Deco.ink)
+                .padding(.top, 6).lineLimit(1).minimumScaleFactor(0.6)
+            Text(unit).font(.mono(9)).tracking(1.5).foregroundStyle(Deco.inkSoft).padding(.top, 6)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 14)
+        .overlay(alignment: .trailing) {
+            if divider { Rectangle().fill(Deco.lineSoft).frame(width: 1) }
+        }
+    }
+
+    private var beginButton: some View {
+        Button(action: store.startWorkout) {
+            ZStack {
+                ChamferShape(cut: 11).stroke(Deco.brass, lineWidth: 1)
+                Text("▲  BEGIN SESSION  ▲")
+                    .font(.display(18)).tracking(6).foregroundStyle(Deco.cream)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
+                    .background(Deco.ink, in: ChamferShape(cut: 8))
+                    .padding(3)
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var recordsCard: some View {
+        VStack(spacing: 0) {
+            ForEach(Array(recentPRs.enumerated()), id: \.element.id) { i, pr in
+                HStack(spacing: 12) {
+                    Text("\(i + 1)")
+                        .font(.display(14)).foregroundStyle(Deco.brass)
+                        .frame(width: 34, height: 34)
+                        .overlay(Rectangle().stroke(Deco.brass, lineWidth: 1))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(pr.name).font(.bodyText(14, .medium)).tracking(0.3).foregroundStyle(Deco.ink)
+                        Kicker(text: pr.date, color: Deco.inkSoft, size: 9, tracking: 1.5)
+                    }
+                    Spacer()
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text(trim(pr.weight)).font(.display(22)).tracking(1).foregroundStyle(Deco.brassDeep)
+                        Text("KG×\(pr.reps)").font(.mono(9)).tracking(1.5).foregroundStyle(Deco.inkSoft)
                     }
                 }
-            }
-            .padding(16)
-        }
-        .background(Theme.bg)
-    }
-}
-
-struct StatCard: View {
-    let label: String
-    let value: String
-    let unit: String
-    let accent: Color
-    var icon: String?
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(label.uppercased())
-                .font(.system(size: 11))
-                .foregroundStyle(Theme.sub)
-            HStack(spacing: 4) {
-                if let icon {
-                    Image(systemName: icon).foregroundStyle(accent).font(.system(size: 14))
-                }
-                Text(value).font(.system(size: 26, weight: .bold))
-                Text(unit).font(.system(size: 12)).foregroundStyle(Theme.sub)
+                .padding(.vertical, 14).padding(.horizontal, 16)
+                if i < recentPRs.count - 1 { Rectangle().fill(Deco.lineSoft).frame(height: 1) }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .background(Theme.card)
-        .overlay(alignment: .top) { accent.frame(height: 3) }
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .shadow(color: .black.opacity(0.06), radius: 3, x: 0, y: 1)
+        .decoCard()
     }
 }
 
-struct SectionHeader: View {
-    let title: String
-    let icon: String
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon).foregroundStyle(Theme.orange)
-            Text(title).font(.system(size: 17, weight: .bold))
-        }
-        .padding(.bottom, 12)
-    }
-}
-
-struct PRRow: View {
-    let pr: PersonalRecord
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(pr.name).font(.system(size: 14, weight: .semibold))
-                Text(pr.date).font(.system(size: 12)).foregroundStyle(Theme.sub)
-            }
-            Spacer()
-            Text("\(Int(pr.weight)) kg × \(pr.reps)")
-                .font(.system(size: 15, weight: .bold))
-                .foregroundStyle(Theme.blue)
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .cardStyle(radius: 10)
-        .padding(.bottom, 6)
-    }
-}
-
-struct WorkoutSummaryRow: View {
+struct SessionRow: View {
     let workout: Workout
-
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 3) {
-                Text(workout.name).font(.system(size: 15, weight: .semibold))
-                Text("\(workout.date) · \(workout.exercises.count) exercises · \(workout.duration)min")
-                    .font(.system(size: 12)).foregroundStyle(Theme.sub)
+                Text(workout.name.uppercased()).font(.display(16)).tracking(1.5).foregroundStyle(Deco.ink)
+                Kicker(text: "\(workout.date) · \(workout.exercises.count) EX · \(workout.duration)M",
+                       color: Deco.inkSoft, size: 9, tracking: 1.5)
             }
             Spacer()
-            Image(systemName: "chevron.right").foregroundStyle(Theme.sub).font(.system(size: 13))
+            Text("›").foregroundStyle(Deco.brass).font(.system(size: 16))
         }
-        .padding(14)
-        .cardStyle()
-        .padding(.bottom, 8)
+        .padding(.vertical, 12).padding(.horizontal, 14)
+        .decoCard()
     }
+}
+
+/// Bottom-corner-chamfered rectangle for the Begin Session CTA.
+struct ChamferShape: Shape {
+    var cut: CGFloat
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.maxY - cut))
+        p.addLine(to: CGPoint(x: r.maxX - cut, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX + cut, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.minX, y: r.maxY - cut))
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// Shared numeric trim + Roman numeral helpers.
+func trim(_ v: Double) -> String {
+    v.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(v)) : String(v)
+}
+
+func roman(_ number: Int) -> String {
+    let table: [(Int, String)] = [
+        (1000, "M"), (900, "CM"), (500, "D"), (400, "CD"), (100, "C"),
+        (90, "XC"), (50, "L"), (40, "XL"), (10, "X"), (9, "IX"),
+        (5, "V"), (4, "IV"), (1, "I"),
+    ]
+    var n = number, out = ""
+    for (v, s) in table { while n >= v { out += s; n -= v } }
+    return out
 }

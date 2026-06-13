@@ -7,115 +7,98 @@ struct ActiveWorkoutView: View {
     @State private var confirmCancel = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    TextField("Workout name", text: $active.name)
-                        .font(.system(size: 22, weight: .bold))
+        VStack(spacing: 0) {
+            topBar
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    Text(active.name.isEmpty ? "WORKOUT" : active.name.uppercased())
+                        .font(.display(26)).tracking(3).foregroundStyle(Deco.ink)
+                        .frame(maxWidth: .infinity)
+                    Rectangle().fill(Deco.brass).frame(width: 60, height: 1).padding(.top, 4)
 
-                    if active.restRemaining > 0 {
-                        RestBanner(active: active)
-                    }
+                    TextField("Name this session", text: $active.name)
+                        .font(.mono(9)).tracking(2).multilineTextAlignment(.center)
+                        .foregroundStyle(Deco.inkSoft).padding(.top, 6)
 
-                    ForEach(Array(active.exercises.enumerated()), id: \.element.id) { index, entry in
-                        ExerciseBlock(active: active, index: index, entry: entry)
+                    if active.restRemaining > 0 { restBanner.padding(.top, 16) }
+
+                    ForEach(Array(active.exercises.enumerated()), id: \.element.id) { i, entry in
+                        ExerciseBlock(active: active, index: i, entry: entry).padding(.top, 16)
                     }
 
                     Button { showPicker = true } label: {
-                        Label("Add Exercise", systemImage: "plus")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(Theme.blue)
-                            .frame(maxWidth: .infinity)
-                            .padding(14)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .strokeBorder(Color(hex: 0xD4E6FF), style: StrokeStyle(lineWidth: 2, dash: [6]))
-                            )
+                        Text("+ ADD EXERCISE")
+                            .font(.mono(11)).tracking(3).foregroundStyle(Deco.brassDeep)
+                            .frame(maxWidth: .infinity).padding(14)
+                            .background(Deco.restTint)
+                            .overlay(Rectangle().strokeBorder(Deco.brass, style: StrokeStyle(lineWidth: 1, dash: [4])))
                     }
+                    .buttonStyle(.plain).padding(.top, 16)
 
                     if !active.exercises.isEmpty {
-                        Button {
-                            store.finishActive()
-                        } label: {
-                            Label("Finish Workout", systemImage: "checkmark")
-                                .font(.system(size: 16, weight: .bold))
-                                .frame(maxWidth: .infinity)
-                                .padding(16)
-                                .background(Theme.green)
-                                .foregroundStyle(.white)
-                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        Button { store.finishActive() } label: {
+                            Text("✓   CONCLUDE SESSION")
+                                .font(.display(16)).tracking(4).foregroundStyle(Deco.cream)
+                                .frame(maxWidth: .infinity).padding(18)
+                                .background(Deco.brassDeep)
                         }
+                        .buttonStyle(.plain).padding(.top, 16)
                     }
                 }
-                .padding(16)
-            }
-            .background(Theme.bg)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("Cancel") { confirmCancel = true }
-                }
-                ToolbarItem(placement: .principal) {
-                    Text(formatTime(active.elapsed))
-                        .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(Theme.blue)
-                        .monospacedDigit()
-                }
-            }
-            .confirmationDialog("Discard workout?", isPresented: $confirmCancel, titleVisibility: .visible) {
-                Button("Discard", role: .destructive) { store.cancelActive() }
-            }
-            .sheet(isPresented: $showPicker) {
-                ExercisePickerView { id in
-                    active.addExercise(id)
-                    showPicker = false
-                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
+                .padding(.bottom, 30)
             }
         }
+        .background(Deco.cream.ignoresSafeArea())
+        .sheet(isPresented: $showPicker) {
+            ExercisePickerView { id in active.addExercise(id); showPicker = false }
+        }
+        .confirmationDialog("Discard this session?", isPresented: $confirmCancel, titleVisibility: .visible) {
+            Button("Discard", role: .destructive) { store.cancelActive() }
+        }
     }
-}
 
-struct RestBanner: View {
-    @ObservedObject var active: ActiveWorkout
-
-    var body: some View {
+    private var topBar: some View {
         HStack {
-            Text("Rest").font(.system(size: 13))
+            Button { confirmCancel = true } label: {
+                Text("‹ CANCEL").font(.mono(11)).tracking(2).foregroundStyle(Deco.brassDeep)
+            }
             Spacer()
-            Text(formatTime(active.restRemaining))
-                .font(.system(size: 22, weight: .bold))
-                .monospacedDigit()
+            VStack(spacing: 0) {
+                Kicker(text: "Elapsed", color: Deco.inkSoft, size: 9, tracking: 3)
+                Text(formatTime(active.elapsed)).font(.display(22)).tracking(2).foregroundStyle(Deco.ink)
+            }
+            Spacer()
+            Text("···").font(.mono(11)).tracking(2).foregroundStyle(Deco.inkSoft)
+        }
+        .padding(.horizontal, 20).padding(.top, 8).padding(.bottom, 12)
+        .overlay(alignment: .bottom) { Rectangle().fill(Deco.line).frame(height: 1) }
+    }
+
+    private var restBanner: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Kicker(text: "Rest", color: Deco.brassLight, size: 9, tracking: 3)
+                Text(formatTime(active.restRemaining)).font(.display(28)).tracking(2).foregroundStyle(Deco.cream)
+            }
             Spacer()
             HStack(spacing: 8) {
-                CircleIconButton(system: active.restRunning ? "pause.fill" : "play.fill") {
-                    active.toggleRest()
-                }
-                CircleIconButton(system: "arrow.counterclockwise") {
-                    active.resetRest()
-                }
+                squareGlyph(active.restRunning ? "▌▌" : "▶") { active.toggleRest() }
+                squareGlyph("↺") { active.resetRest() }
             }
         }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 16)
-        .background(Color(hex: 0xF0F7FF))
-        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Color(hex: 0xD4E6FF)))
+        .padding(.vertical, 14).padding(.horizontal, 16)
+        .background(Deco.ink)
     }
-}
 
-struct CircleIconButton: View {
-    let system: String
-    let action: () -> Void
-
-    var body: some View {
+    private func squareGlyph(_ glyph: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: system)
-                .font(.system(size: 13, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(Theme.blue)
-                .clipShape(Circle())
+            Text(glyph).font(.system(size: 12)).foregroundStyle(Deco.brassLight)
+                .frame(width: 36, height: 36)
+                .overlay(Rectangle().stroke(Deco.brass, lineWidth: 1))
         }
+        .buttonStyle(.plain)
     }
 }
 
@@ -125,50 +108,46 @@ struct ExerciseBlock: View {
     let entry: ExerciseEntry
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.exercise?.name ?? "").font(.system(size: 15, weight: .semibold))
-                    Text(entry.exercise?.muscle ?? "").font(.system(size: 12)).foregroundStyle(Theme.blue)
+                    Text(entry.exercise?.name.uppercased() ?? "").font(.display(16)).tracking(1.5).foregroundStyle(Deco.ink)
+                    Kicker(text: entry.exercise?.muscle ?? "", size: 9, tracking: 2)
                 }
                 Spacer()
-                Button(role: .destructive) {
-                    active.removeExercise(at: index)
-                } label: {
-                    Image(systemName: "trash").foregroundStyle(Theme.sub).font(.system(size: 14))
+                Button { active.removeExercise(at: index) } label: {
+                    Text("⌫").foregroundStyle(Deco.inkSoft).font(.system(size: 15))
+                }.buttonStyle(.plain)
+            }
+            .padding(.vertical, 12).padding(.horizontal, 16)
+            .overlay(alignment: .bottom) { Rectangle().fill(Deco.lineSoft).frame(height: 1) }
+
+            VStack(spacing: 0) {
+                HStack(spacing: 8) {
+                    Text("SET").frame(width: 32, alignment: .leading)
+                    Text("KG").frame(maxWidth: .infinity)
+                    Text("REPS").frame(maxWidth: .infinity)
+                    Spacer().frame(width: 40)
                 }
-            }
+                .font(.mono(9)).tracking(2).foregroundStyle(Deco.inkSoft)
+                .padding(.bottom, 6)
+                .overlay(alignment: .bottom) { Rectangle().fill(Deco.lineSoft).frame(height: 1) }
 
-            HStack(spacing: 8) {
-                Text("SET").frame(width: 35)
-                Text("KG").frame(maxWidth: .infinity)
-                Text("REPS").frame(maxWidth: .infinity)
-                Spacer().frame(width: 36)
-            }
-            .font(.system(size: 11, weight: .semibold))
-            .foregroundStyle(Theme.sub)
+                ForEach(Array(entry.sets.enumerated()), id: \.element.id) { si, _ in
+                    SetRow(active: active, exerciseIndex: index, setIndex: si,
+                           isLast: si == entry.sets.count - 1)
+                }
 
-            ForEach(Array(entry.sets.enumerated()), id: \.element.id) { si, _ in
-                SetRow(active: active, exerciseIndex: index, setIndex: si)
+                Button { active.addSet(exerciseIndex: index) } label: {
+                    Text("+ ADD SET").font(.mono(10)).tracking(2).foregroundStyle(Deco.brassDeep)
+                        .frame(maxWidth: .infinity).padding(8)
+                        .overlay(Rectangle().strokeBorder(Deco.brass, style: StrokeStyle(lineWidth: 1, dash: [4])))
+                }
+                .buttonStyle(.plain).padding(.top, 10)
             }
-
-            Button {
-                active.addSet(exerciseIndex: index)
-            } label: {
-                Text("+ Add Set")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Theme.sub)
-                    .frame(maxWidth: .infinity)
-                    .padding(8)
-                    .background(
-                        RoundedRectangle(cornerRadius: 8, style: .continuous)
-                            .strokeBorder(Color(hex: 0xDDDDDD), style: StrokeStyle(lineWidth: 1, dash: [4]))
-                    )
-            }
-            .padding(.top, 6)
+            .padding(.horizontal, 16).padding(.top, 10).padding(.bottom, 12)
         }
-        .padding(14)
-        .cardStyle(radius: 14)
+        .decoCard()
     }
 }
 
@@ -176,69 +155,39 @@ struct SetRow: View {
     @ObservedObject var active: ActiveWorkout
     let exerciseIndex: Int
     let setIndex: Int
-
-    private var binding: Binding<SetEntry> {
-        Binding(
-            get: { active.exercises[exerciseIndex].sets[setIndex] },
-            set: { active.exercises[exerciseIndex].sets[setIndex] = $0 }
-        )
-    }
+    let isLast: Bool
 
     var body: some View {
         let set = active.exercises[exerciseIndex].sets[setIndex]
         HStack(spacing: 8) {
-            Text("\(setIndex + 1)")
-                .font(.system(size: 13))
-                .foregroundStyle(Theme.sub)
-                .frame(width: 35)
-
-            NumberField(value: Binding(
-                get: { binding.wrappedValue.weight },
-                set: { binding.wrappedValue.weight = $0 }
-            ))
-            NumberField(value: Binding(
-                get: { Double(binding.wrappedValue.reps) },
-                set: { binding.wrappedValue.reps = Int($0) }
-            ))
-
+            Text("\(setIndex + 1)").font(.display(14)).foregroundStyle(Deco.brassDeep).frame(width: 32, alignment: .leading)
+            decoNumberField(get: { set.weight }, set: { active.exercises[exerciseIndex].sets[setIndex].weight = $0 })
+            decoNumberField(get: { Double(set.reps) }, set: { active.exercises[exerciseIndex].sets[setIndex].reps = Int($0) })
             Button {
                 active.toggleSet(exerciseIndex: exerciseIndex, setIndex: setIndex)
             } label: {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(set.done ? .white : Color(hex: 0x999999))
-                    .frame(width: 36, height: 36)
-                    .background(set.done ? Theme.blue : Color(hex: 0xE8E8E8))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                Text("✓").font(.system(size: 14))
+                    .foregroundStyle(set.done ? Deco.cream : .clear)
+                    .frame(width: 28, height: 28)
+                    .background(set.done ? Deco.brass : .clear)
+                    .overlay(Rectangle().stroke(set.done ? Deco.brass : Deco.line, lineWidth: 1))
             }
+            .buttonStyle(.plain)
+            .frame(maxWidth: 40, alignment: .trailing)
         }
-        .padding(.vertical, 4)
-        .padding(.horizontal, 4)
-        .background(set.done ? Color(hex: 0xF0F7FF) : .clear)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .padding(.vertical, 8)
+        .background(set.done ? Deco.restTint : .clear)
+        .overlay(alignment: .bottom) { if !isLast { Rectangle().fill(Deco.lineSoft).frame(height: 1) } }
     }
-}
 
-/// Numeric text field that shows an empty string for zero, like the web inputs.
-struct NumberField: View {
-    @Binding var value: Double
-
-    var body: some View {
+    private func decoNumberField(get: @escaping () -> Double, set: @escaping (Double) -> Void) -> some View {
         TextField("0", text: Binding(
-            get: { value == 0 ? "" : trimmed(value) },
-            set: { value = Double($0) ?? 0 }
+            get: { get() == 0 ? "" : trim(get()) },
+            set: { set(Double($0) ?? 0) }
         ))
         .keyboardType(.decimalPad)
         .multilineTextAlignment(.center)
-        .font(.system(size: 15, weight: .semibold))
+        .font(.display(18)).foregroundStyle(Deco.ink)
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 8)
-        .background(Theme.bg)
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(Color(hex: 0xE8E8E8)))
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-
-    private func trimmed(_ v: Double) -> String {
-        v.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(v)) : String(v)
     }
 }

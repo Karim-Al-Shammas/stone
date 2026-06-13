@@ -4,88 +4,76 @@ struct WorkoutsView: View {
     @EnvironmentObject var store: AppStore
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("Workouts").font(.system(size: 28, weight: .heavy))
-                    Spacer()
+        VStack(spacing: 0) {
+            DecoHeader(title: "THE FORGE", sub: "Session Ledger")
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 10) {
                     Button(action: store.startWorkout) {
-                        Image(systemName: "plus")
-                            .font(.system(size: 16, weight: .bold))
-                            .foregroundStyle(.white)
-                            .frame(width: 38, height: 38)
-                            .background(Theme.blue)
-                            .clipShape(Circle())
+                        Text("+   NEW SESSION")
+                            .font(.display(16)).tracking(4).foregroundStyle(Deco.cream)
+                            .frame(maxWidth: .infinity).padding(16)
+                            .background(Deco.ink)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.bottom, 8)
+
+                    if store.workouts.isEmpty {
+                        Text("NO SESSIONS LOGGED").font(.mono(11)).tracking(2)
+                            .foregroundStyle(Deco.inkSoft).padding(.top, 50)
+                    }
+
+                    ForEach(store.workoutsByDateDesc) { workout in
+                        WorkoutLedgerCard(workout: workout) { store.deleteWorkout(workout) }
                     }
                 }
-                .padding(.bottom, 16)
-
-                if store.workouts.isEmpty {
-                    Text("No workouts yet!")
-                        .foregroundStyle(Theme.sub)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 60)
-                }
-
-                ForEach(store.workoutsByDateDesc) { workout in
-                    WorkoutCard(workout: workout) {
-                        store.deleteWorkout(workout)
-                    }
-                }
+                .padding(.horizontal, 24)
+                .padding(.top, 18)
+                .padding(.bottom, 120)
             }
-            .padding(16)
         }
-        .background(Theme.bg)
+        .background(Deco.cream)
     }
 }
 
-struct WorkoutCard: View {
+struct WorkoutLedgerCard: View {
     let workout: Workout
     let onDelete: () -> Void
     @State private var confirming = false
 
     var body: some View {
-        HStack(alignment: .top) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(workout.name).font(.system(size: 15, weight: .semibold))
-                Text(meta).font(.system(size: 12)).foregroundStyle(Theme.sub)
-                FlowTags(names: workout.exercises.map { $0.exercise?.name ?? $0.exerciseId })
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(workout.name.uppercased()).font(.display(18)).tracking(1.8).foregroundStyle(Deco.ink)
+                Spacer()
+                Text(workout.date.uppercased()).font(.mono(9)).tracking(2).foregroundStyle(Deco.brassDeep)
             }
-            Spacer()
-            Button(role: .destructive) { confirming = true } label: {
-                Image(systemName: "trash").foregroundStyle(Theme.sub).font(.system(size: 14))
+            HStack(spacing: 16) {
+                Text("\(workout.exercises.count) EXERCISES")
+                Text("·")
+                Text("\(workout.totalSets) SETS")
+                Text("·")
+                Text("\(workout.duration) MIN")
             }
+            .font(.mono(10)).tracking(1).foregroundStyle(Deco.inkSoft)
+            .padding(.top, 8)
+
+            FlexibleWrap(spacing: 6, lineSpacing: 6) {
+                ForEach(Array(workout.exercises.enumerated()), id: \.offset) { _, e in
+                    Text(e.exercise?.name ?? e.exerciseId)
+                        .font(.bodyText(10)).tracking(0.5).foregroundStyle(Deco.brassDeep)
+                        .padding(.vertical, 3).padding(.horizontal, 8)
+                        .overlay(Rectangle().stroke(Deco.brass, lineWidth: 1))
+                }
+            }
+            .padding(.top, 10)
         }
-        .padding(14)
-        .cardStyle()
-        .padding(.bottom, 8)
-        .confirmationDialog("Delete this workout?", isPresented: $confirming, titleVisibility: .visible) {
+        .padding(.vertical, 14).padding(.horizontal, 16)
+        .decoCard()
+        .contextMenu {
+            Button("Delete Session", role: .destructive) { confirming = true }
+        }
+        .confirmationDialog("Delete this session?", isPresented: $confirming, titleVisibility: .visible) {
             Button("Delete", role: .destructive, action: onDelete)
-        }
-    }
-
-    private var meta: String {
-        var parts = ["\(workout.date)", "\(workout.exercises.count) exercises", "\(workout.totalSets) sets"]
-        if workout.duration > 0 { parts.append("\(workout.duration)min") }
-        return parts.joined(separator: " · ")
-    }
-}
-
-/// Simple wrapping tag layout for exercise names.
-struct FlowTags: View {
-    let names: [String]
-
-    var body: some View {
-        FlexibleWrap(spacing: 4, lineSpacing: 4) {
-            ForEach(Array(names.enumerated()), id: \.offset) { _, name in
-                Text(name)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color(hex: 0x666666))
-                    .padding(.vertical, 2)
-                    .padding(.horizontal, 8)
-                    .background(Theme.inputBg)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-            }
         }
     }
 }

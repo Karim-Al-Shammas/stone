@@ -1,16 +1,19 @@
 import SwiftUI
 
-/// Palette mirroring the original web app's CSS variables.
-enum Theme {
-    static let blue = Color(hex: 0x4F8EF7)
-    static let green = Color(hex: 0x34C759)
-    static let orange = Color(hex: 0xFF9500)
-    static let red = Color(hex: 0xFF3B30)
-    static let bg = Color(hex: 0xFAFAFA)
-    static let card = Color.white
-    static let text = Color(hex: 0x1A1A1A)
-    static let sub = Color(hex: 0x888888)
-    static let inputBg = Color(hex: 0xF0F3F7)
+/// Chrysler / Art Deco palette — ink-on-cream with brass accents.
+enum Deco {
+    static let cream = Color(hex: 0xF3EAD7)      // app background
+    static let creamDeep = Color(hex: 0xE8DCC1)  // hatched fills
+    static let paper = Color(hex: 0xFBF6E9)      // card surface
+    static let ink = Color(hex: 0x1A1612)        // primary text / dark surfaces
+    static let inkSoft = Color(hex: 0x3A312A)    // secondary text
+    static let brass = Color(hex: 0xB8893A)      // primary accent / borders
+    static let brassDeep = Color(hex: 0x8A6321)  // strong accent / kickers
+    static let brassLight = Color(hex: 0xD4A857) // light accent on dark
+    static let gold = Color(hex: 0xC89A3E)       // highlight
+    static let line = Color(hex: 0x1A1612, alpha: 0.18)
+    static let lineSoft = Color(hex: 0x1A1612, alpha: 0.08)
+    static let restTint = Color(hex: 0xB8893A, alpha: 0.08) // completed-set row
 }
 
 extension Color {
@@ -25,19 +28,41 @@ extension Color {
     }
 }
 
-/// Soft card container used across the app.
-struct CardBackground: ViewModifier {
-    var radius: CGFloat = 12
-    func body(content: Content) -> some View {
-        content
-            .background(Theme.card)
-            .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
-            .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
-    }
-}
+// MARK: - Typography (bundled Cinzel / Inter / DM Mono)
 
-extension View {
-    func cardStyle(radius: CGFloat = 12) -> some View {
-        modifier(CardBackground(radius: radius))
+extension Font {
+    /// Cinzel — all-caps Roman display.
+    static func display(_ size: CGFloat, _ weight: Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .bold, .heavy, .black: name = "Cinzel-Bold"
+        case .semibold, .medium:    name = "Cinzel-SemiBold"
+        default:                    name = "Cinzel-Regular"
+        }
+        return .custom(name, size: size)
+    }
+
+    /// Inter — body copy.
+    static func bodyText(_ size: CGFloat, _ weight: Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .light, .thin, .ultraLight: name = "Inter-Light"
+        case .medium:                    name = "Inter-Medium"
+        case .semibold:                  name = "Inter-SemiBold"
+        case .bold, .heavy, .black:      name = "Inter-Bold"
+        default:                         name = "Inter-Regular"
+        }
+        return .custom(name, size: size)
+    }
+
+    /// DM Mono — kickers / metadata (always uppercase, letter-spaced).
+    static func mono(_ size: CGFloat, _ weight: Weight = .regular) -> Font {
+        let name: String
+        switch weight {
+        case .light, .thin, .ultraLight: name = "DMMono-Light"
+        case .medium, .semibold, .bold, .heavy, .black: name = "DMMono-Medium"
+        default:                         name = "DMMono-Regular"
+        }
+        return .custom(name, size: size)
     }
 }

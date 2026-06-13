@@ -13,6 +13,15 @@ struct Exercise: Identifiable, Hashable {
         case cardio
     }
 
+    /// Form cues derived from the description's sentences (max 3).
+    var cues: [String] {
+        desc.split(separator: ".")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+            .prefix(3)
+            .map { String($0) }
+    }
+
     static func byId(_ id: String) -> Exercise? {
         all.first { $0.id == id }
     }
