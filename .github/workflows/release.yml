@@ -21,9 +21,15 @@ concurrency:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      # xcodegen 2.44+ emits objectVersion 77, which needs Xcode 16+ to read.
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
 
       - name: Install xcodegen
         run: brew install xcodegen
