@@ -1,0 +1,120 @@
+name: Release
+
+# Push a tag like `v0.2.0` to build an unsigned IPA, publish it as a GitHub
+# Release, and update the SideStore source (apps.json) served via GitHub Pages.
+# SideStore on the phone signs the IPA itself — no Apple credentials live here.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the Release + upload the IPA
+  pages: write      # publish apps.json to GitHub Pages
+  id-token: write   # required by deploy-pages
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: FitForge
+        run: xcodegen generate
+
+      - name: Resolve version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build (unsigned, device)
+        working-directory: FitForge
+        run: |
+          xcodebuild \
+            -project FitForge.xcodeproj \
+            -scheme FitForge \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build-device \
+            MARKETING_VERSION="${{ steps.ver.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        working-directory: FitForge
+        run: |
+          rm -rf Payload FitForge.ipa
+          mkdir -p Payload
+          cp -R build-device/Build/Products/Release-iphoneos/FitForge.app Payload/
+          zip -qry FitForge.ipa Payload
+          rm -rf Payload
+
+      - name: Compute metadata
+        id: meta
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          SIZE=$(stat -f%z FitForge/FitForge.ipa)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: FitForge/FitForge.ipa
+          tag_name: ${{ github.ref_name }}
+          name: FitForge ${{ steps.meta.outputs.version }}
+          generate_release_notes: true
+
+      - name: Patch apps.json with this release
+        run: |
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/FitForge.ipa"
+          DATE=$(date -u +%Y-%m-%d)
+          jq \
+            --arg v "${{ steps.meta.outputs.version }}" \
+            --arg url "$DOWNLOAD_URL" \
+            --argjson size ${{ steps.meta.outputs.size }} \
+            --arg date "$DATE" \
+            '
+            .apps[0].version        = $v
+          | .apps[0].versionDate    = $date
+          | .apps[0].downloadURL    = $url
+          | .apps[0].size           = $size
+          | .apps[0].versions       = [{
+              version: $v,
+              date: $date,
+              localizedDescription: .apps[0].versionDescription,
+              downloadURL: $url,
+              size: $size,
+              minOSVersion: "16.0"
+            }]
+            ' apps.json > _apps.json && mv _apps.json apps.json
+          mkdir -p _site
+          cp apps.json _site/apps.json
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy apps.json to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

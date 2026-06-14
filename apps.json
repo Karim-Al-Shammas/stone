@@ -1,0 +1,34 @@
+{
+  "name": "FitForge Source",
+  "identifier": "app.stone.fitforge.source",
+  "subtitle": "Karim's sideloaded apps",
+  "apps": [
+    {
+      "name": "FitForge",
+      "bundleIdentifier": "fitforge.stone.app",
+      "developerName": "Karim",
+      "subtitle": "Art Deco workout tracker",
+      "version": "0.1.0",
+      "versionDate": "2026-06-14",
+      "versionDescription": "Initial SideStore release.",
+      "downloadURL": "https://github.com/Karim-Al-Shammas/stone/releases/download/v0.1.0/FitForge.ipa",
+      "localizedDescription": "FitForge is a native SwiftUI workout tracker dressed in 1930s Chrysler Building Art Deco — brass accents, sunburst spires, and ink-on-cream typography. Log sessions, track personal records, and watch your weekly volume climb.",
+      "iconURL": "https://raw.githubusercontent.com/Karim-Al-Shammas/stone/swift-native/FitForge/Sources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png",
+      "tintColor": "B8893A",
+      "size": 610000,
+      "minOSVersion": "16.0",
+      "screenshotURLs": [],
+      "versions": [
+        {
+          "version": "0.1.0",
+          "date": "2026-06-14",
+          "localizedDescription": "Initial SideStore release.",
+          "downloadURL": "https://github.com/Karim-Al-Shammas/stone/releases/download/v0.1.0/FitForge.ipa",
+          "size": 610000,
+          "minOSVersion": "16.0"
+        }
+      ]
+    }
+  ],
+  "news": []
+}
