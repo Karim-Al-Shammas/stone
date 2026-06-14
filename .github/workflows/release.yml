@@ -23,7 +23,7 @@ jobs:
   build:
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # xcodegen 2.44+ emits objectVersion 77, which needs Xcode 16+ to read.
       - name: Select latest stable Xcode
@@ -76,7 +76,7 @@ jobs:
           echo "size=$SIZE" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: FitForge/FitForge.ipa
           tag_name: ${{ github.ref_name }}
@@ -110,7 +110,7 @@ jobs:
           cp apps.json _site/apps.json
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: _site
 
@@ -123,4 +123,4 @@ jobs:
     steps:
       - name: Deploy apps.json to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
